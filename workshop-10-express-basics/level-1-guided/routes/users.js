@@ -10,12 +10,12 @@ let users = [
 ];
 
 /**
- * GET /api/users - Get all users
- * Query params: ?role=admin
+ * GET /api/users - Get all users with pagination
+ * Query params: ?role=admin&page=1&limit=10
  */
 router.get('/', (req, res) => {
   // ตรวจสอบ query parameter
-  const { role } = req.query;
+  const { role, page, limit } = req.query;
 
   let filteredUsers = users;
 
@@ -24,10 +24,24 @@ router.get('/', (req, res) => {
     filteredUsers = users.filter(u => u.role === role);
   }
 
+  // Pagination logic
+  const pageNum = parseInt(page) || 1;
+  const limitNum = parseInt(limit) || 10;
+  const startIndex = (pageNum - 1) * limitNum;
+  const endIndex = startIndex + limitNum;
+
+  // คำนวณข้อมูล pagination
+  const totalUsers = filteredUsers.length;
+  const totalPages = Math.ceil(totalUsers / limitNum);
+  const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
   res.json({
     success: true,
-    count: filteredUsers.length,
-    data: filteredUsers
+    count: paginatedUsers.length,
+    total: totalUsers,
+    page: pageNum,
+    totalPages: totalPages,
+    data: paginatedUsers
   });
 });
 

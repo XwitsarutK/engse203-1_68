@@ -32,6 +32,40 @@ router.get('/', (req, res) => {
 });
 
 /**
+ * GET /api/users/search?name=john&email=example
+ * Query params: name, email
+ */
+router.get('/search', (req, res) => {
+  // TODO: ค้นหา users ที่มี name หรือ email ตรงกับ query
+
+  console.log('req.query: ' + req.query);
+
+  // ตรวจสอบ query parameter
+  const { name, email } = req.query;
+
+  console.log('search name: ' + name);
+  console.log('search email: ' + email);
+
+  let filteredUsers = users;
+
+  // กรองตาม name ถ้ามี
+  if (name) {
+    filteredUsers = filteredUsers.filter(u => u.name.toLowerCase().includes(name.toLowerCase()));
+  }
+
+  // กรองตาม email ถ้ามี
+  if (email) {
+    filteredUsers = filteredUsers.filter(u => u.email.toLowerCase().includes(email.toLowerCase()));
+  }
+
+  res.json({
+    success: true,
+    count: filteredUsers.length,
+    data: filteredUsers
+  });
+});
+
+/**
  * GET /api/users/:id - Get user by ID
  * Route parameter: id
  */

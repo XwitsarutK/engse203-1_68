@@ -28,6 +28,9 @@ function showHelp() {
   console.log('  delete <file>     - Delete a file');
   console.log('  mkdir <dir>       - Create a directory');
   console.log('  copy <src> <dst>  - Copy a file');
+  console.log('  append <file> <content> - Append content to a file');
+  console.log('  search <keyword>  - Search files containing keyword');
+  console.log('  stats <file>      - Show file statistics');
   console.log('  help              - Show this help\n');
 }
 
@@ -84,6 +87,34 @@ async function main() {
           break;
         }
         await fileManager.copyFile(args[1], args[2]);
+        break;
+
+      case 'append':
+        if (!args[1]) {
+          logger.error('Please provide a filename');
+          break;
+        }
+        if (!args[2]) {
+          logger.error('Please provide content to append');
+          break;
+        }
+        await fileManager.appendFile(args[1], args[2]);
+        break;
+
+      case 'search':
+        if (!args[1]) {
+          logger.error('Please provide a keyword to search');
+          break;
+        }
+        await fileManager.searchFiles(args[1]);
+        break;
+
+      case 'stats':
+        if (!args[1]) {
+          logger.error('Please provide a filename');
+          break;
+        }
+        await fileManager.getFileStats(args[1]);
         break;
 
       case 'help':

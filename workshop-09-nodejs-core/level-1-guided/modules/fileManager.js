@@ -118,6 +118,76 @@ class FileManager {
       throw error;
     }
   }
+
+  // เพิ่มข้อความต่อท้ายไฟล์
+  async appendFile(fileName, content) {
+    try {
+      const filePath = path.join(this.dataDir, fileName);
+      await fs.appendFile(filePath, '\n' + content, 'utf-8');
+      logger.success(`Appended to file: ${fileName}`);
+      return true;
+    } catch (error) {
+      logger.error(`Failed to append to file: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // ค้นหาไฟล์ที่มี keyword
+  async searchFiles(keyword) {
+    try {
+      const files = await fs.readdir(this.dataDir);
+      const results = [];
+      
+      for (const file of files) {
+        const filePath = path.join(this.dataDir, file);
+        const stats = await fs.stat(filePath);
+        
+        if (stats.isFile()) {
+          const content = await fs.readFile(filePath, 'utf-8');
+          if (content.includes(keyword)) {
+            results.push(file);
+          }
+        }
+      }
+      
+      if (results.length === 0) {
+        logger.warning(`No files found containing: "${keyword}"`);
+      } else {
+        logger.success(`Found ${results.length} file(s) containing: "${keyword}"`);
+        results.forEach(file => console.log(`  - ${file}`));
+      }
+      
+      return results;
+    } catch (error) {
+      logger.error(`Failed to search files: ${error.message}`);
+      throw error;
+    }
+  }
+
+  // แสดงข้อมูลรายละเอียดของไฟล์
+  async getFileStats(fileName) {
+    try {
+      const filePath = path.join(this.dataDir, fileName);
+      const stats = await fs.stat(filePath);
+      
+      // นับจำนวนบรรทัด
+      const content = await fs.readFile(filePath, 'utf-8');
+      const lines = content.split('\n').length;
+      
+      logger.info(`Statistics for '${fileName}':`);
+      console.log('─'.repeat(50));
+      console.log(`  File size:     ${stats.size} bytes`);
+      console.log(`  Created:       ${stats.birthtime.toLocaleString()}`);
+      console.log(`  Last modified: ${stats.mtime.toLocaleString()}`);
+      console.log(`  Lines:         ${lines}`);
+      console.log('─'.repeat(50));
+      
+      return stats;
+    } catch (error) {
+      logger.error(`Failed to get file stats: ${error.message}`);
+      throw error;
+    }
+  }
 }
 
 module.exports = new FileManager();

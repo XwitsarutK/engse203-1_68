@@ -5,7 +5,8 @@
 - วันที่: [1 Feb 2026]
 
 ## การทดสอบ Endpoints
-
+![alt text](image-2.png)
+![alt text](image-3.png)
 ### 1. GET /api/users
 **Request:**
 ```bash

@@ -9,41 +9,42 @@ const { validateAuthor } = require('../middleware/validate');
  * Query: ?country=UK
  */
 router.get('/', (req, res) => {
-  // TODO: ดึง authors ทั้งหมด
-  // TODO: ถ้ามี query param 'country' ให้กรองตาม country
-  // TODO: ส่ง response พร้อม count และ data
+  let authors = dataStore.getAllAuthors();
   
-  // YOUR CODE HERE
-  // ตรวจสอบ query parameter
   const { country } = req.query;
-  
-  let filteredCountry = country;
-  
-  // กรองตาม country ถ้ามี
   if (country) {
-    filteredCountry = dataStore.getAllAuthors().filter(a => a.country === country);
-  } else {
-    filteredCountry = dataStore.getAllAuthors();
+    authors = authors.filter(a => a.country === country);
   }
   
   res.json({
     success: true,
-    count: filteredCountry.length,
-    data: filteredCountry
-  });  
+    count: authors.length,
+    data: authors
+  });
 });
 
 /**
  * GET /api/authors/:id - Get author by ID
  */
 router.get('/:id', (req, res, next) => {
-  // TODO: แปลง id เป็น number
-  // TODO: หา author จาก dataStore
-  // TODO: ถ้าไม่เจอ ส่ง 404
-  // TODO: ถ้าเจอ ส่ง author พร้อม books ของ author
+  const id = parseInt(req.params.id);
+  const author = dataStore.getAuthorById(id);
   
-  // YOUR CODE HERE
+  if (!author) {
+    const error = new Error('Author not found');
+    error.statusCode = 404;
+    return next(error);
+  }
   
+  const books = dataStore.getBooksByAuthor(id);
+  
+  res.json({
+    success: true,
+    data: {
+      ...author,
+      books
+    }
+  });
 });
 
 /**
@@ -67,23 +68,49 @@ router.post('/', validateAuthor, (req, res) => {
  * PUT /api/authors/:id - Update author
  */
 router.put('/:id', validateAuthor, (req, res, next) => {
-  // TODO: อัพเดท author
-  // TODO: ถ้าไม่เจอ ส่ง 404
+  const id = parseInt(req.params.id);
+  const updatedAuthor = dataStore.updateAuthor(id, req.body);
   
-  // YOUR CODE HERE
+  if (!updatedAuthor) {
+    const error = new Error('Author not found');
+    error.statusCode = 404;
+    return next(error);
+  }
   
+  res.json({
+    success: true,
+    message: 'Author updated successfully',
+    data: updatedAuthor
+  });
 });
 
 /**
  * DELETE /api/authors/:id - Delete author
  */
 router.delete('/:id', (req, res, next) => {
-  // TODO: ลบ author
-  // TODO: ตรวจสอบว่า author มี books หรือไม่
-  // TODO: ถ้ามี books ไม่ให้ลบ (ส่ง 400)
+  const id = parseInt(req.params.id);
   
-  // YOUR CODE HERE
+  // ตรวจสอบว่ามี books หรือไม่
+  const books = dataStore.getBooksByAuthor(id);
+  if (books.length > 0) {
+    const error = new Error('Cannot delete author with existing books');
+    error.statusCode = 400;
+    return next(error);
+  }
   
+  const deletedAuthor = dataStore.deleteAuthor(id);
+  
+  if (!deletedAuthor) {
+    const error = new Error('Author not found');
+    error.statusCode = 404;
+    return next(error);
+  }
+  
+  res.json({
+    success: true,
+    message: 'Author deleted successfully',
+    data: deletedAuthor
+  });
 });
 
 module.exports = router;

@@ -6,6 +6,7 @@ const cors = require('cors');
 const authorsRouter = require('./routes/authors');
 const booksRouter = require('./routes/books');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const rateLimit = require('./middleware/rateLimit');
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(morgan('dev'));
+app.use(rateLimit()); // Apply rate limiting to all routes
 
 // Welcome route
 app.get('/', (req, res) => {

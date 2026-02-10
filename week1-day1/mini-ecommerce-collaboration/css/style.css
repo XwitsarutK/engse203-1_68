@@ -1,0 +1,56 @@
+/* สไตล์พื้นฐานของหน้าเว็บ */
+body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; }
+
+/* ส่วน Header */
+header { background: #333; color: #fff; padding: 1rem; text-align: center; }
+
+/* ช่องค้นหา */
+input[type="text"] { width: 60%; padding: 8px; }
+
+/* Loader (แสดงระหว่างโหลดข้อมูล) */
+.loader {
+    display: none;
+    color: #fff;
+    font-size: 1.2em;
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Animation กระพริบสำหรับ loader */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* พื้นที่แสดงสินค้า - ใช้ flexbox เพื่อให้ responsive */
+main {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 1rem;
+}
+
+/* Card แสดงสินค้าแต่ละชิ้น */
+.product-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin: 10px;
+    padding: 15px;
+    width: 200px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    /* Animation นุ่มนวล 0.5 วินาที */
+    transition: transform 0.5s ease, box-shadow 0.5s ease;
+    cursor: pointer;
+}
+.product-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+.product-card img { max-width: 100%; height: auto; }
+.product-card h3 { font-size: 1.1em; }
+.product-card p { color: #888; }

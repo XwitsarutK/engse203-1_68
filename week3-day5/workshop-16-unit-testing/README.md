@@ -62,6 +62,7 @@ npm run test:coverage
 ### Challenge 1: Test Todo Model (with Mock)
 เขียน tests สำหรับ Todo Model ที่ต้องเชื่อม database (ใช้ mock)
 
+```javascript
 // src/models/Todo.js (simplified)
 const db = require('../config/database');
 

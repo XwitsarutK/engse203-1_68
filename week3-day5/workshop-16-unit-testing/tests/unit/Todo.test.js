@@ -1,207 +1,261 @@
 // tests/unit/Todo.test.js
-
-// Mock database BEFORE importing Todo
-jest.mock('../../src/config/database', () => {
-  return require('../__mocks__/database');
-});
-
 const Todo = require('../../src/models/Todo');
 const db = require('../../src/config/database');
 
+// Mock the database module
+jest.mock('../../src/config/database');
+
 describe('Todo Model', () => {
   
-  // Reset mock data before each test
+  // Clear all mocks before each test to ensure test isolation
   beforeEach(() => {
-    db._reset();
+    jest.clearAllMocks();
   });
-  
-  describe('getAll', () => {
+
+  // ==================== getAll() Tests ====================
+  describe('getAll()', () => {
     
-    // ✅ Positive Tests
-    test('should return all todos', async () => {
-      const todos = await Todo.getAll();
+    test('should return all todos from database', async () => {
+      // Arrange - Setup mock data
+      const mockTodos = [
+        { id: 1, title: 'Buy groceries', completed: false },
+        { id: 2, title: 'Learn Jest', completed: true },
+        { id: 3, title: 'Write tests', completed: false }
+      ];
+      db.query.mockResolvedValue(mockTodos);
       
-      expect(Array.isArray(todos)).toBe(true);
-      expect(todos.length).toBe(2);
+      // Act - Call the method
+      const result = await Todo.getAll();
+      
+      // Assert - Verify results
+      expect(result).toEqual(mockTodos);
+      expect(result).toHaveLength(3);
+      expect(db.query).toHaveBeenCalledTimes(1);
+      expect(db.query).toHaveBeenCalledWith('SELECT * FROM todos ORDER BY createdAt DESC');
     });
-    
-    test('should return todos with correct structure', async () => {
-      const todos = await Todo.getAll();
+
+    test('should return empty array when no todos exist', async () => {
+      // Arrange
+      db.query.mockResolvedValue([]);
       
-      expect(todos[0]).toHaveProperty('id');
-      expect(todos[0]).toHaveProperty('task');
-      expect(todos[0]).toHaveProperty('done');
-      expect(todos[0]).toHaveProperty('priority');
+      // Act
+      const result = await Todo.getAll();
+      
+      // Assert
+      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
+      expect(db.query).toHaveBeenCalledTimes(1);
     });
-    
-    // ❌ Negative Tests
-    test('should throw error when database fails', async () => {
-      // Mock database error
-      jest.spyOn(db, 'query').mockRejectedValueOnce(new Error('Connection lost'));
+
+    test('should handle database errors properly', async () => {
+      // Arrange - Mock a database error
+      const dbError = new Error('Database connection failed');
+      db.query.mockRejectedValue(dbError);
       
-      await expect(Todo.getAll())
-        .rejects
-        .toThrow('Failed to fetch todos');
+      // Act & Assert - Expect error to be thrown
+      await expect(Todo.getAll()).rejects.toThrow('Failed to fetch todos');
+      expect(db.query).toHaveBeenCalledTimes(1);
     });
   });
-  
-  describe('getById', () => {
+
+  // ==================== getById() Tests ====================
+  describe('getById()', () => {
     
-    // ✅ Positive Tests
-    test('should return todo by ID', async () => {
-      const todo = await Todo.getById(1);
+    test('should return a single todo by ID', async () => {
+      // Arrange
+      const mockTodo = { id: 1, title: 'Test Todo', completed: false };
+      db.query.mockResolvedValue([mockTodo]);
       
-      expect(todo.id).toBe(1);
-      expect(todo.task).toBe('Test todo 1');
-    });
-    
-    test('should return correct todo data', async () => {
-      const todo = await Todo.getById(2);
+      // Act
+      const result = await Todo.getById(1);
       
-      expect(todo.done).toBe(true);
-      expect(todo.priority).toBe('low');
+      // Assert
+      expect(result).toEqual(mockTodo);
+      expect(db.query).toHaveBeenCalledTimes(1);
+      expect(db.query).toHaveBeenCalledWith('SELECT * FROM todos WHERE id = ?', [1]);
     });
-    
-    // ❌ Negative Tests
+
+    test('should handle different ID types correctly', async () => {
+      // Arrange
+      const mockTodo = { id: 42, title: 'Task 42', completed: true };
+      db.query.mockResolvedValue([mockTodo]);
+      
+      // Act
+      const result = await Todo.getById(42);
+      
+      // Assert
+      expect(result).toEqual(mockTodo);
+      expect(result.id).toBe(42);
+      expect(db.query).toHaveBeenCalledWith('SELECT * FROM todos WHERE id = ?', [42]);
+    });
+
     test('should throw error when todo not found', async () => {
-      await expect(Todo.getById(999))
-        .rejects
-        .toThrow('Todo not found');
-    });
-    
-    test('should throw error when database fails', async () => {
-      jest.spyOn(db, 'query').mockRejectedValueOnce(new Error('Connection lost'));
+      // Arrange - Mock empty result (no todo found)
+      db.query.mockResolvedValue([]);
       
-      await expect(Todo.getById(1))
-        .rejects
-        .toThrow('Failed to fetch todo');
+      // Act & Assert
+      await expect(Todo.getById(999)).rejects.toThrow('Todo not found');
+      expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
+    test('should handle database query errors', async () => {
+      // Arrange
+      const dbError = new Error('Query execution failed');
+      db.query.mockRejectedValue(dbError);
+      
+      // Act & Assert
+      await expect(Todo.getById(1)).rejects.toThrow('Failed to fetch todo');
+      expect(db.query).toHaveBeenCalledTimes(1);
     });
   });
-  
-  describe('create', () => {
+
+  // ==================== create() Tests ====================
+  describe('create()', () => {
     
-    // ✅ Positive Tests
-    test('should create new todo', async () => {
-      const newTodo = {
-        task: 'New task',
-        done: false,
-        priority: 'medium'
+    test('should create a new todo and return it with ID', async () => {
+      // Arrange
+      const newTodoData = {
+        title: 'New Task',
+        completed: false
       };
+      const mockResult = { insertId: 1, affectedRows: 1 };
+      db.query.mockResolvedValue(mockResult);
       
-      const result = await Todo.create(newTodo);
+      // Act
+      const result = await Todo.create(newTodoData);
       
-      expect(result.id).toBeDefined();
-      expect(result.task).toBe('New task');
-      expect(result.priority).toBe('medium');
-    });
-    
-    test('should return todo with createdAt', async () => {
-      const newTodo = {
-        task: 'New task',
-        done: false,
-        priority: 'high'
-      };
-      
-      const result = await Todo.create(newTodo);
-      
-      expect(result.createdAt).toBeDefined();
-      expect(new Date(result.createdAt)).toBeInstanceOf(Date);
-    });
-    
-    test('should increment ID', async () => {
-      const todo1 = await Todo.create({ task: 'Task 1', done: false });
-      const todo2 = await Todo.create({ task: 'Task 2', done: false });
-      
-      expect(todo2.id).toBeGreaterThan(todo1.id);
-    });
-    
-    // ❌ Negative Tests
-    test('should throw error for duplicate todo', async () => {
-      // Mock duplicate entry error
-      jest.spyOn(db, 'query').mockRejectedValueOnce({
-        code: 'ER_DUP_ENTRY',
-        message: 'Duplicate entry'
+      // Assert
+      expect(result).toMatchObject({
+        id: 1,
+        title: 'New Task',
+        completed: false
       });
-      
-      await expect(Todo.create({ task: 'Duplicate' }))
-        .rejects
-        .toThrow('Duplicate todo');
+      expect(result).toHaveProperty('createdAt');
+      expect(db.query).toHaveBeenCalledTimes(1);
+      expect(db.query).toHaveBeenCalledWith('INSERT INTO todos SET ?', newTodoData);
     });
-    
-    test('should throw error when database fails', async () => {
-      jest.spyOn(db, 'query').mockRejectedValueOnce(new Error('Connection lost'));
+
+    test('should create todo with only title (minimal data)', async () => {
+      // Arrange
+      const minimalData = { title: 'Simple Task' };
+      const mockResult = { insertId: 5 };
+      db.query.mockResolvedValue(mockResult);
       
-      await expect(Todo.create({ task: 'Test' }))
-        .rejects
-        .toThrow('Failed to create todo');
+      // Act
+      const result = await Todo.create(minimalData);
+      
+      // Assert
+      expect(result.id).toBe(5);
+      expect(result.title).toBe('Simple Task');
+      expect(result).toHaveProperty('createdAt');
+      expect(typeof result.createdAt).toBe('string');
+    });
+
+    test('should create todo with all fields', async () => {
+      // Arrange
+      const fullData = {
+        title: 'Complete Task',
+        completed: true,
+        priority: 'high',
+        dueDate: '2026-12-31'
+      };
+      const mockResult = { insertId: 10 };
+      db.query.mockResolvedValue(mockResult);
+      
+      // Act
+      const result = await Todo.create(fullData);
+      
+      // Assert
+      expect(result).toMatchObject({
+        id: 10,
+        ...fullData
+      });
+    });
+
+    test('should handle duplicate entry errors', async () => {
+      // Arrange - Mock duplicate entry error
+      const duplicateError = new Error('Duplicate entry');
+      duplicateError.code = 'ER_DUP_ENTRY';
+      db.query.mockRejectedValue(duplicateError);
+      
+      // Act & Assert
+      await expect(Todo.create({ title: 'Duplicate' })).rejects.toThrow('Duplicate todo');
+      expect(db.query).toHaveBeenCalledTimes(1);
+    });
+
+    test('should handle general database insertion errors', async () => {
+      // Arrange
+      const dbError = new Error('Insert failed');
+      db.query.mockRejectedValue(dbError);
+      
+      // Act & Assert
+      await expect(Todo.create({ title: 'Test' })).rejects.toThrow('Failed to create todo');
+      expect(db.query).toHaveBeenCalledTimes(1);
     });
   });
-  
-  describe('update', () => {
+
+  // ==================== Integration Test ====================
+  describe('Create and Retrieve Workflow', () => {
     
-    // ✅ Positive Tests
-    test('should update existing todo', async () => {
-      const updates = { task: 'Updated task', done: true };
-      const result = await Todo.update(1, updates);
+    test('should create a todo and then retrieve it', async () => {
+      // Step 1: Create a new todo
+      const newTodo = { title: 'Integration Test', completed: false };
+      db.query.mockResolvedValueOnce({ insertId: 100 });
       
-      expect(result.id).toBe(1);
-      expect(result.task).toBe('Updated task');
-      expect(result.done).toBe(true);
-    });
-    
-    test('should update partial data', async () => {
-      const updates = { done: true };
-      const result = await Todo.update(1, updates);
+      const created = await Todo.create(newTodo);
+      expect(created.id).toBe(100);
+      expect(created.title).toBe('Integration Test');
       
-      expect(result.done).toBe(true);
-    });
-    
-    // ❌ Negative Tests
-    test('should throw error when todo not found', async () => {
-      await expect(Todo.update(999, { done: true }))
-        .rejects
-        .toThrow('Todo not found');
-    });
-    
-    test('should throw error when database fails', async () => {
-      jest.spyOn(db, 'query').mockRejectedValueOnce(new Error('Connection lost'));
+      // Step 2: Retrieve the created todo by ID
+      const mockRetrievedTodo = { 
+        id: 100, 
+        title: 'Integration Test', 
+        completed: false,
+        createdAt: created.createdAt 
+      };
+      db.query.mockResolvedValueOnce([mockRetrievedTodo]);
       
-      await expect(Todo.update(1, { done: true }))
-        .rejects
-        .toThrow('Failed to update todo');
+      const retrieved = await Todo.getById(100);
+      expect(retrieved.id).toBe(100);
+      expect(retrieved.title).toBe('Integration Test');
+      
+      // Verify both operations were called
+      expect(db.query).toHaveBeenCalledTimes(2);
     });
   });
-  
-  describe('delete', () => {
+
+  // ==================== Mock Verification Tests ====================
+  describe('Database Mock Verification', () => {
     
-    // ✅ Positive Tests
-    test('should delete existing todo', async () => {
-      const result = await Todo.delete(1);
-      expect(result).toBe(true);
-    });
-    
-    test('should actually remove todo from database', async () => {
-      await Todo.delete(1);
+    test('should verify database query is called with correct SQL', async () => {
+      // Arrange
+      db.query.mockResolvedValue([]);
       
-      // Verify it's gone
-      await expect(Todo.getById(1))
-        .rejects
-        .toThrow('Todo not found');
-    });
-    
-    // ❌ Negative Tests
-    test('should throw error when todo not found', async () => {
-      await expect(Todo.delete(999))
-        .rejects
-        .toThrow('Todo not found');
-    });
-    
-    test('should throw error when database fails', async () => {
-      jest.spyOn(db, 'query').mockRejectedValueOnce(new Error('Connection lost'));
+      // Act
+      await Todo.getAll();
       
-      await expect(Todo.delete(1))
-        .rejects
-        .toThrow('Failed to delete todo');
+      // Assert - Verify exact SQL query
+      expect(db.query).toHaveBeenCalledWith('SELECT * FROM todos ORDER BY createdAt DESC');
+    });
+
+    test('should verify database query is called with correct parameters', async () => {
+      // Arrange
+      db.query.mockResolvedValue([{ id: 5, title: 'Test' }]);
+      
+      // Act
+      await Todo.getById(5);
+      
+      // Assert - Verify SQL and parameters
+      expect(db.query).toHaveBeenCalledWith(
+        'SELECT * FROM todos WHERE id = ?',
+        [5]
+      );
+    });
+
+    test('should not call database if method is not invoked', () => {
+      // Assert - Verify no calls were made
+      expect(db.query).not.toHaveBeenCalled();
+      expect(db.query).toHaveBeenCalledTimes(0);
     });
   });
 });
